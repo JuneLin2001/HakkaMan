@@ -1,10 +1,10 @@
 # Hakkaman - PTT 省錢版每日通知 Line Bot
 
-每天自動爬取 [PTT Lifeismoney 省錢版](https://www.ptt.cc/bbs/Lifeismoney/) 文章，並透過 LINE Bot 發送通知。
+每天自動使用 RSS 抓取 [PTT Lifeismoney 省錢版](https://www.ptt.cc/bbs/Lifeismoney/) 文章，並透過 LINE Bot 發送通知。
 
 ## 功能
 
-- 爬取 PTT 省錢版最新文章，日期範圍為近兩天
+- 使用 RSS 抓取 PTT 省錢版最新文章，日期範圍為近兩天
 - 過濾公告、集中串等非優惠資訊
 - 依推文數排序，熱門優惠優先顯示
 - 透過 LINE Bot 每日推播通知

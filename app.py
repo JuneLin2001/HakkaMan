@@ -8,7 +8,7 @@ today_YYYYMMDD = datetime.now().strftime("%Y/%m/%d")
 
 def main():
     crawler = PTTCrawler("Lifeismoney")
-    articles = crawler.crawl_board(num_pages=2)
+    articles = crawler.crawl_board()
 
     if not articles:
         print("No articles found.")

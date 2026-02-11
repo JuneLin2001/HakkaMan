@@ -1,197 +1,73 @@
 """
-PTT Lifeismoney Board Web Crawler
-Crawls articles from https://www.ptt.cc/bbs/Lifeismoney/
+PTT Lifeismoney Board RSS Crawler
+Fetches articles from https://www.ptt.cc/atom/Lifeismoney.xml
 """
 
 import httpx
-from bs4 import BeautifulSoup
+import xml.etree.ElementTree as ET
 from typing import List, Dict
 from datetime import datetime, timedelta, timezone
+
+ATOM_NS = "{http://www.w3.org/2005/Atom}"
 
 
 class PTTCrawler:
     def __init__(self, board_name: str = "Lifeismoney"):
-        self.base_url = "https://www.ptt.cc"
-        self.board_name = board_name
-        self.board_url = f"{self.base_url}/bbs/{board_name}/index.html"
+        self.feed_url = f"https://www.ptt.cc/atom/{board_name}.xml"
 
-        self.client = httpx.Client(
-            follow_redirects=True,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                              "AppleWebKit/537.36 Chrome/120.0 Safari/537.36"
-            }
-        )
-
-        self.client.post(
-            "https://www.ptt.cc/ask/over18",
-            data={"from": f"/bbs/{board_name}/index.html", "yes": "yes"},
-        )
-
-    def fetch_page(self, url: str) -> str:
-        """Fetch a page from PTT"""
-        response = self.client.get(url, timeout=20.0)
+    def crawl_board(self) -> List[Dict]:
+        """Fetch and parse the Atom feed for the board"""
+        response = httpx.get(self.feed_url, timeout=20.0)
         response.raise_for_status()
-        return response.text
 
-    def parse_article_list(self, html: str) -> List[Dict]:
-        """Parse article list from board index page"""
-        soup = BeautifulSoup(html, "html.parser")
+        root = ET.fromstring(response.text)
         articles = []
 
-        for entry in soup.find_all("div", class_="r-ent"):
-            article = {}
+        for entry in root.findall(f"{ATOM_NS}entry"):
+            title = entry.findtext(f"{ATOM_NS}title", "N/A")
+            link_el = entry.find(f"{ATOM_NS}link[@rel='alternate']")
+            link = link_el.get("href") if link_el is not None else None
+            author_el = entry.find(f"{ATOM_NS}author/{ATOM_NS}name")
+            author = author_el.text if author_el is not None else "N/A"
+            published = entry.findtext(f"{ATOM_NS}published", "")
 
-            title_tag = entry.find("div", class_="title")
-            if title_tag and title_tag.find("a"):
-                article["title"] = title_tag.find("a").text.strip()
-                article["link"] = self.base_url + title_tag.find("a")["href"]
-            else:
-                article["title"] = title_tag.text.strip(
-                ) if title_tag else "N/A"
-                article["link"] = None
-
-            push_tag = entry.find("div", class_="nrec")
-            article["push_count"] = push_tag.text.strip() if push_tag else "0"
-
-            author_tag = entry.find("div", class_="author")
-            article["author"] = author_tag.text.strip() if author_tag else "N/A"
-
-            date_tag = entry.find("div", class_="date")
-            article["date"] = date_tag.text.strip() if date_tag else "N/A"
-
-            articles.append(article)
+            articles.append({
+                "title": title,
+                "link": link,
+                "author": author,
+                "published": published,
+            })
 
         return articles
 
-    def get_previous_page_url(self, html: str) -> str:
-        """Extract previous page URL from current page"""
-        soup = BeautifulSoup(html, "html.parser")
-        prev_link = soup.find("a", string="‹ 上頁")
-        if prev_link and "href" in prev_link.attrs:
-            return self.base_url + prev_link["href"]
-        return None
 
-    def crawl_board(self, num_pages: int = 1) -> List[Dict]:
-        """Crawl multiple pages from the board"""
-        all_articles = []
-        current_url = self.board_url
-
-        for page_num in range(num_pages):
-            print(f"Crawling page {page_num + 1}/{num_pages}: {current_url}")
-
-            try:
-                html = self.fetch_page(current_url)
-                articles = self.parse_article_list(html)
-                all_articles.extend(articles)
-                print(f"  Found {len(articles)} articles")
-
-                if page_num < num_pages - 1:
-                    current_url = self.get_previous_page_url(html)
-                    if not current_url:
-                        print("  No more pages available")
-                        break
-
-            except Exception as e:
-                print(f"  Error crawling page: {e}")
-                break
-
-        return all_articles
-
-    def fetch_article_content(self, article_url: str) -> Dict:
-        """Fetch full article content"""
-        try:
-            html = self.fetch_page(article_url)
-            soup = BeautifulSoup(html, "html.parser")
-
-            main_content = soup.find("div", id="main-content")
-            if not main_content:
-                return {"error": "Content not found"}
-
-            meta_lines = main_content.find_all(
-                "span", class_="article-meta-value")
-            metadata = {
-                "author": meta_lines[0].text.strip() if len(meta_lines) > 0 else "N/A",
-                "board": meta_lines[1].text.strip() if len(meta_lines) > 1 else "N/A",
-                "title": meta_lines[2].text.strip() if len(meta_lines) > 2 else "N/A",
-                "time": meta_lines[3].text.strip() if len(meta_lines) > 3 else "N/A",
-            }
-
-            for meta in main_content.find_all("div", class_="article-metaline"):
-                meta.decompose()
-            for meta in main_content.find_all("div", class_="article-metaline-right"):
-                meta.decompose()
-            for push in main_content.find_all("div", class_="push"):
-                push.decompose()
-
-            content_text = main_content.get_text().strip()
-
-            pushes = []
-            for push_tag in soup.find_all("div", class_="push"):
-                push_type = push_tag.find("span", class_="push-tag")
-                push_user = push_tag.find("span", class_="push-userid")
-                push_content = push_tag.find("span", class_="push-content")
-                push_time = push_tag.find("span", class_="push-ipdatetime")
-
-                pushes.append({
-                    "type": push_type.text.strip() if push_type else "",
-                    "user": push_user.text.strip() if push_user else "",
-                    "content": push_content.text.strip() if push_content else "",
-                    "time": push_time.text.strip() if push_time else ""
-                })
-
-            return {
-                "metadata": metadata,
-                "content": content_text,
-                "pushes": pushes,
-                "url": article_url
-            }
-
-        except Exception as e:
-            return {"error": str(e)}
-
-
-def format_articles(articles):
+def format_articles(articles: List[Dict]) -> str:
     tz = timezone(timedelta(hours=8))
     now = datetime.now(tz)
-    yesterday = now - timedelta(days=1)
-
-    today = f"{now.month}/{now.day}"
-    yesterday_str = f"{yesterday.month}/{yesterday.day}"
+    today = now.date()
+    yesterday = today - timedelta(days=1)
 
     filter_keywords = ['[集中]', '[公告]', '[協尋]', '[轉錄]', '[刪除]']
 
-    today_articles = []
+    filtered = []
     for article in articles:
         if not article["link"]:
             continue
 
-        if article["date"].strip() != today and article["date"].strip() != yesterday_str:
+        if article["published"]:
+            pub_date = datetime.fromisoformat(article["published"]).date()
+            if pub_date != today and pub_date != yesterday:
+                continue
+
+        if any(kw in article["title"] for kw in filter_keywords):
             continue
 
-        if any(keyword in article['title'] for keyword in filter_keywords):
-            continue
+        filtered.append(article)
 
-        today_articles.append(article)
+    filtered.sort(key=lambda a: a["published"], reverse=True)
 
-    def get_push_value(article):
-        push = article["push_count"].strip()
-        if push == "爆":
-            return 1000
-        elif push == "" or push == "0":
-            return 0
-        else:
-            try:
-                return int(push)
-            except:
-                return 0
+    lines = []
+    for article in filtered:
+        lines.append(f"{article['title']}\n{article['link']}")
 
-    today_articles.sort(key=get_push_value, reverse=True)
-
-    today_lines = []
-    for article in today_articles:
-        push = article["push_count"] or "0"
-        today_lines.append(
-            f"[{push} 推] {article['title']} \n{article['link']}")
-
-    return "\n\n".join(today_lines)
+    return "\n\n".join(lines)
