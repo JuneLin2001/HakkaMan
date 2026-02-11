@@ -6,7 +6,7 @@ Crawls articles from https://www.ptt.cc/bbs/Lifeismoney/
 import httpx
 from bs4 import BeautifulSoup
 from typing import List, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 class PTTCrawler:
@@ -15,42 +15,48 @@ class PTTCrawler:
         self.board_name = board_name
         self.board_url = f"{self.base_url}/bbs/{board_name}/index.html"
 
+        self.client = httpx.Client(
+            follow_redirects=True,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                              "AppleWebKit/537.36 Chrome/120.0 Safari/537.36"
+            }
+        )
+
+        self.client.post(
+            "https://www.ptt.cc/ask/over18",
+            data={"from": f"/bbs/{board_name}/index.html", "yes": "yes"},
+        )
+
     def fetch_page(self, url: str) -> str:
         """Fetch a page from PTT"""
-        with httpx.Client(follow_redirects=True) as client:
-            response = client.get(url, timeout=10.0)
-            response.raise_for_status()
-            return response.text
+        response = self.client.get(url, timeout=20.0)
+        response.raise_for_status()
+        return response.text
 
     def parse_article_list(self, html: str) -> List[Dict]:
         """Parse article list from board index page"""
         soup = BeautifulSoup(html, "html.parser")
         articles = []
 
-        # Find all article entries
         for entry in soup.find_all("div", class_="r-ent"):
             article = {}
 
-            # Title and link
             title_tag = entry.find("div", class_="title")
             if title_tag and title_tag.find("a"):
                 article["title"] = title_tag.find("a").text.strip()
                 article["link"] = self.base_url + title_tag.find("a")["href"]
             else:
-                # Post was deleted or no link
                 article["title"] = title_tag.text.strip(
                 ) if title_tag else "N/A"
                 article["link"] = None
 
-            # Push count (popularity)
             push_tag = entry.find("div", class_="nrec")
             article["push_count"] = push_tag.text.strip() if push_tag else "0"
 
-            # Author
             author_tag = entry.find("div", class_="author")
             article["author"] = author_tag.text.strip() if author_tag else "N/A"
 
-            # Date
             date_tag = entry.find("div", class_="date")
             article["date"] = date_tag.text.strip() if date_tag else "N/A"
 
@@ -78,10 +84,8 @@ class PTTCrawler:
                 html = self.fetch_page(current_url)
                 articles = self.parse_article_list(html)
                 all_articles.extend(articles)
-
                 print(f"  Found {len(articles)} articles")
 
-                # Get previous page URL for next iteration
                 if page_num < num_pages - 1:
                     current_url = self.get_previous_page_url(html)
                     if not current_url:
@@ -100,12 +104,10 @@ class PTTCrawler:
             html = self.fetch_page(article_url)
             soup = BeautifulSoup(html, "html.parser")
 
-            # Main content
             main_content = soup.find("div", id="main-content")
             if not main_content:
                 return {"error": "Content not found"}
 
-            # Extract metadata
             meta_lines = main_content.find_all(
                 "span", class_="article-meta-value")
             metadata = {
@@ -115,7 +117,6 @@ class PTTCrawler:
                 "time": meta_lines[3].text.strip() if len(meta_lines) > 3 else "N/A",
             }
 
-            # Extract main text (remove metadata and push tags)
             for meta in main_content.find_all("div", class_="article-metaline"):
                 meta.decompose()
             for meta in main_content.find_all("div", class_="article-metaline-right"):
@@ -125,7 +126,6 @@ class PTTCrawler:
 
             content_text = main_content.get_text().strip()
 
-            # Extract push/comments
             pushes = []
             for push_tag in soup.find_all("div", class_="push"):
                 push_type = push_tag.find("span", class_="push-tag")
@@ -152,10 +152,13 @@ class PTTCrawler:
 
 
 def format_articles(articles):
-    now = datetime.now()
+    tz = timezone(timedelta(hours=8))
+    now = datetime.now(tz)
     yesterday = now - timedelta(days=1)
+
     today = f"{now.month}/{now.day}"
     yesterday_str = f"{yesterday.month}/{yesterday.day}"
+
     filter_keywords = ['[集中]', '[公告]', '[協尋]', '[轉錄]', '[刪除]']
 
     today_articles = []
