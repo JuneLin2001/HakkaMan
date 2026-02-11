@@ -6,7 +6,6 @@ Crawls articles from https://www.ptt.cc/bbs/Lifeismoney/
 import httpx
 from bs4 import BeautifulSoup
 from typing import List, Dict
-import json
 from datetime import datetime
 
 
@@ -152,39 +151,42 @@ class PTTCrawler:
             return {"error": str(e)}
 
 
-def main():
-    """Example usage"""
-    print("PTT Lifeismoney Crawler")
-    print("=" * 50)
+def format_articles(articles):
+    now = datetime.now()
+    today = f"{now.month}/{now.day}"
+    filter_keywords = ['[集中]', '[公告]', '[協尋]', '[轉錄]', '[刪除]']
 
-    crawler = PTTCrawler("Lifeismoney")
+    today_articles = []
+    for article in articles:
+        if not article["link"]:
+            continue
 
-    # Crawl 3 pages of articles
-    print("\n1. Crawling article list (3 pages)...")
-    articles = crawler.crawl_board(num_pages=3)
+        if article["date"].strip() != today:
+            continue
 
-    print(f"\nTotal articles found: {len(articles)}")
-    print("\nFirst 5 articles:")
-    for i, article in enumerate(articles[:5], 1):
-        print(f"{i}. [{article['push_count']:>3}推] {article['title']}")
-        print(f"   作者: {article['author']} | 日期: {article['date']}")
-        print(f"   連結: {article['link']}")
-        print()
+        if any(keyword in article['title'] for keyword in filter_keywords):
+            continue
 
-    # Save to JSON
-    output_file = f"ptt_{crawler.board_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(articles, f, ensure_ascii=False, indent=2)
-    print(f"Saved to {output_file}")
+        today_articles.append(article)
 
-    # Example: Fetch full content of first article
-    if articles and articles[0]["link"]:
-        print("\n2. Fetching full content of first article...")
-        full_article = crawler.fetch_article_content(articles[0]["link"])
-        print(f"Title: {full_article.get('metadata', {}).get('title', 'N/A')}")
-        print(f"Content preview: {full_article.get('content', '')[:200]}...")
-        print(f"Number of comments: {len(full_article.get('pushes', []))}")
+    def get_push_value(article):
+        push = article["push_count"].strip()
+        if push == "爆":
+            return 1000
+        elif push == "" or push == "0":
+            return 0
+        else:
+            try:
+                return int(push)
+            except:
+                return 0
 
+    today_articles.sort(key=get_push_value, reverse=True)
 
-if __name__ == "__main__":
-    main()
+    today_lines = []
+    for article in today_articles:
+        push = article["push_count"] or "0"
+        today_lines.append(
+            f"[{push} 推] {article['title']} \n{article['link']}")
+
+    return "\n\n".join(today_lines)

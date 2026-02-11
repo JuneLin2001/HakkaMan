@@ -1,58 +1,24 @@
-import os
-from dotenv import load_dotenv
-from linebot.v3.messaging import (
-    Configuration,
-    ApiClient,
-    MessagingApi,
-    PushMessageRequest,
-    TextMessage,
-)
-from crawler import PTTCrawler
+from crawler import PTTCrawler, format_articles
 from datetime import datetime
-
-load_dotenv()
-
-
-def format_articles(articles):
-    today_lines = []
-    for article in articles:
-        if not article["link"]:
-            continue
-        push = article["push_count"] or "0"
-        today_lines.append(f"[{push}推] {article['title']}\n{article['link']}")
-    return "\n\n".join(today_lines)
+from line import send_line_message
 
 
-def send_line_message(text):
-    token = os.getenv("CHANNEL_ACCESS_TOKEN")
-    user_id = os.getenv("USER_ID")
-
-    configuration = Configuration(access_token=token)
-    with ApiClient(configuration) as api_client:
-        api = MessagingApi(api_client)
-        api.push_message(
-            PushMessageRequest(
-                to=user_id,
-                messages=[TextMessage(text=text)],
-            )
-        )
+YYYYMMDD = datetime.now().strftime("%Y/%m/%d")
 
 
 def main():
     crawler = PTTCrawler("Lifeismoney")
-    articles = crawler.crawl_board(num_pages=1)
-    today = datetime.now().strftime("%Y/%m/%d")
+    articles = crawler.crawl_board(num_pages=2)
 
     if not articles:
         print("No articles found.")
         return
 
-    message = f"📢 PTT 省錢版 {today}消息\n\n" + format_articles(articles)
+    message = f"📢 PTT 省錢版 {YYYYMMDD}消息\n\n" + format_articles(articles)
 
     # LINE message limit is 5000 chars
     if len(message) > 5000:
         message = message[:4997] + "..."
-
     send_line_message(message)
     print(f"Sent {len(articles)} articles to LINE.")
 
