@@ -1,67 +1,61 @@
-from flask import Flask, request, abort
-
-from linebot.v3 import (
-    WebhookHandler
-)
-from linebot.v3.exceptions import (
-    InvalidSignatureError
-)
+import os
+from dotenv import load_dotenv
 from linebot.v3.messaging import (
     Configuration,
     ApiClient,
     MessagingApi,
-    ReplyMessageRequest,
-    TextMessage
+    PushMessageRequest,
+    TextMessage,
 )
-from linebot.v3.webhooks import (
-    MessageEvent,
-    TextMessageContent
-)
+from crawler import PTTCrawler
+from datetime import datetime
 
-import os
-from dotenv import load_dotenv
 load_dotenv()
 
-app = Flask(__name__)
 
-channel_access_token = os.getenv("CHANNEL_ACCESS_TOKEN")
-channel_secret = os.getenv("CHANNEL_SECRET")
-
-configuration = Configuration(access_token=channel_access_token)
-handler = WebhookHandler(channel_secret)
-
-
-@app.route("/callback", methods=['POST'])
-def callback():
-    # get X-Line-Signature header value
-    signature = request.headers['X-Line-Signature']
-
-    # get request body as text
-    body = request.get_data(as_text=True)
-    app.logger.info("Request body: " + body)
-
-    # handle webhook body
-    try:
-        handler.handle(body, signature)
-    except InvalidSignatureError:
-        app.logger.info(
-            "Invalid signature. Please check your channel access token/channel secret.")
-        abort(400)
-
-    return 'OK'
+def format_articles(articles):
+    today_lines = []
+    for article in articles:
+        if not article["link"]:
+            continue
+        push = article["push_count"] or "0"
+        today_lines.append(f"[{push}推] {article['title']}\n{article['link']}")
+    return "\n\n".join(today_lines)
 
 
-@handler.add(MessageEvent, message=TextMessageContent)
-def handle_message(event):
+def send_line_message(text):
+    token = os.getenv("CHANNEL_ACCESS_TOKEN")
+    user_id = os.getenv("USER_ID")
+
+    configuration = Configuration(access_token=token)
     with ApiClient(configuration) as api_client:
-        line_bot_api = MessagingApi(api_client)
-        line_bot_api.reply_message_with_http_info(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[TextMessage(text=event.message.text)]
+        api = MessagingApi(api_client)
+        api.push_message(
+            PushMessageRequest(
+                to=user_id,
+                messages=[TextMessage(text=text)],
             )
         )
 
 
+def main():
+    crawler = PTTCrawler("Lifeismoney")
+    articles = crawler.crawl_board(num_pages=1)
+    today = datetime.now().strftime("%Y/%m/%d")
+
+    if not articles:
+        print("No articles found.")
+        return
+
+    message = f"📢 PTT 省錢版 {today}消息\n\n" + format_articles(articles)
+
+    # LINE message limit is 5000 chars
+    if len(message) > 5000:
+        message = message[:4997] + "..."
+
+    send_line_message(message)
+    print(f"Sent {len(articles)} articles to LINE.")
+
+
 if __name__ == "__main__":
-    app.run()
+    main()
