@@ -6,7 +6,7 @@ Crawls articles from https://www.ptt.cc/bbs/Lifeismoney/
 import httpx
 from bs4 import BeautifulSoup
 from typing import List, Dict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class PTTCrawler:
@@ -153,7 +153,9 @@ class PTTCrawler:
 
 def format_articles(articles):
     now = datetime.now()
+    yesterday = now - timedelta(days=1)
     today = f"{now.month}/{now.day}"
+    yesterday_str = f"{yesterday.month}/{yesterday.day}"
     filter_keywords = ['[集中]', '[公告]', '[協尋]', '[轉錄]', '[刪除]']
 
     today_articles = []
@@ -161,7 +163,7 @@ def format_articles(articles):
         if not article["link"]:
             continue
 
-        if article["date"].strip() != today:
+        if article["date"].strip() != today and article["date"].strip() != yesterday_str:
             continue
 
         if any(keyword in article['title'] for keyword in filter_keywords):

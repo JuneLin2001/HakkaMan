@@ -3,7 +3,7 @@ from datetime import datetime
 from line import send_line_message
 
 
-YYYYMMDD = datetime.now().strftime("%Y/%m/%d")
+today_YYYYMMDD = datetime.now().strftime("%Y/%m/%d")
 
 
 def main():
@@ -14,7 +14,8 @@ def main():
         print("No articles found.")
         return
 
-    message = f"📢 PTT 省錢版 {YYYYMMDD}消息\n\n" + format_articles(articles)
+    message = f"📢 PTT 省錢版 {today_YYYYMMDD} 近兩天消息\n\n" + \
+        format_articles(articles)
 
     # LINE message limit is 5000 chars
     if len(message) > 5000:
