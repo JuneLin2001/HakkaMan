@@ -41,8 +41,9 @@ cd hakkaman
 參考 `.env.example` 建立 `.env` 檔案：
 
 ```env
-CHANNEL_ACCESS_TOKEN=你的LINE_Channel_Access_Token
-USER_ID=你的LINE_User_ID
+CHANNEL_ACCESS_TOKEN=你的 Line channel access token
+USER_ID=你的 Line user ID
+WORKER_URL= Cloudflare Worker URL
 ```
 
 ## 使用

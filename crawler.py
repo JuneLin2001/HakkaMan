@@ -7,13 +7,19 @@ import httpx
 import xml.etree.ElementTree as ET
 from typing import List, Dict
 from datetime import datetime, timedelta, timezone
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 ATOM_NS = "{http://www.w3.org/2005/Atom}"
+
+worker_url = os.getenv("WORKER_URL")
 
 
 class PTTCrawler:
     def __init__(self, board_name: str = "Lifeismoney"):
-        self.feed_url = f"https://www.ptt.cc/atom/{board_name}.xml"
+        self.feed_url = f"{worker_url}/{board_name}"
 
     def crawl_board(self) -> List[Dict]:
         """Fetch and parse the Atom feed for the board"""

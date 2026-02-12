@@ -23,4 +23,5 @@ jobs:
         env:
           CHANNEL_ACCESS_TOKEN: ${{ secrets.CHANNEL_ACCESS_TOKEN }}
           USER_ID: ${{ secrets.USER_ID }}
+          WORKER_URL: ${{ secrets.WORKER_URL }}
         run: python app.py

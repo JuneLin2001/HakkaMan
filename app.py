@@ -21,7 +21,6 @@ def main():
     if len(message) > 5000:
         message = message[:4997] + "..."
     send_line_message(message)
-    print(f"Sent {len(articles)} articles to LINE.")
 
 
 if __name__ == "__main__":
