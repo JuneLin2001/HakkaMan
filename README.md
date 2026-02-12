@@ -4,19 +4,26 @@
 
 ## 功能
 
-- 使用 RSS 抓取 PTT 省錢版最新文章，日期範圍為近兩天
+- 使用 [RSS](http://rss.ptt.cc/Lifeismoney.xml) 抓取 PTT 省錢版最新文章
 - 過濾公告、集中串等非優惠資訊
-- 依推文數排序，熱門優惠優先顯示
 - 透過 LINE Bot 每日推播通知
-- GitHub Actions 定時執行（每天早上 8:00 台灣時間）
+- GitHub Actions 每天定時執行（台灣時間早上 7:00 ）
+
+## Built With
+
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+![Flask](https://img.shields.io/badge/flask-%23000.svg?style=for-the-badge&logo=flask&logoColor=white)
+![Line](https://img.shields.io/badge/Line-00C300?style=for-the-badge&logo=line&logoColor=white)
+![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=for-the-badge&logo=Cloudflare&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/github%20actions-%232671E5.svg?style=for-the-badge&logo=githubactions&logoColor=white)
 
 ## 專案結構
 
 ```
 hakkaman/
-├── app.py          # 主程式進入點，串接爬蟲與 LINE 推播
+├── app.py          # 主程式進入點，串接爬蟲與 LINE Bot
 ├── crawler.py      # PTT 爬蟲與文章格式化
-├── line.py         # LINE Bot 推播功能
+├── line.py         # LINE Bot 發送訊息功能
 ├── requirements.txt
 ├── .env.example
 └── .github/
@@ -43,7 +50,7 @@ cd hakkaman
 ```env
 CHANNEL_ACCESS_TOKEN=你的 Line channel access token
 USER_ID=你的 Line user ID
-WORKER_URL= Cloudflare Worker URL
+WORKER_URL=Cloudflare Worker URL
 ```
 
 ## 使用
@@ -60,5 +67,6 @@ python app.py
 2. 新增以下 Secrets：
    - `CHANNEL_ACCESS_TOKEN`
    - `USER_ID`
-3. 推送至 GitHub 後，workflow 會在每天 08:00（台灣時間）自動執行
+   - `WORKER_URL`
+3. 推送至 GitHub 後會每天自動執行
 4. 也可以在 **Actions** 頁面手動觸發 `workflow_dispatch`
