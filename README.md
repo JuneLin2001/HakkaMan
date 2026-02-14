@@ -2,11 +2,13 @@
 
 每天自動使用 RSS 抓取 [PTT Lifeismoney 省錢版](https://www.ptt.cc/bbs/Lifeismoney/) 文章，並透過 LINE Bot 發送通知。
 
+![screenshot](./docs/assets/Screenshot_20260214-172347.png)
+
 ## 功能
 
 - 使用 [RSS](http://rss.ptt.cc/Lifeismoney.xml) 抓取 PTT 省錢版最新文章
 - 過濾公告、集中串等非優惠資訊
-- 透過 LINE Bot 每日推播通知
+- 透過 LINE 官方帳號發送每日通知
 - GitHub Actions 每天定時執行（台灣時間早上 7:00 ）
 
 ## Built With
