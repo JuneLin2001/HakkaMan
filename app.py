@@ -1,9 +1,10 @@
 from crawler import PTTCrawler, format_articles
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from line import send_line_message
 
 
-today_YYYYMMDD = datetime.now().strftime("%Y/%m/%d")
+today_tw = datetime.now(ZoneInfo("Asia/Taipei")).strftime("%Y/%m/%d")
 
 
 def main():
@@ -14,7 +15,7 @@ def main():
         print("No articles found.")
         return
 
-    message = f"📢 PTT 省錢版 {today_YYYYMMDD} 近兩天消息\n\n" + \
+    message = f"📢 PTT 省錢版 {today_tw} 近兩天消息\n\n" + \
         format_articles(articles)
 
     # LINE message limit is 5000 chars
