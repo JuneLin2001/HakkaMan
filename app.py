@@ -1,7 +1,7 @@
 from crawler import PTTCrawler, format_articles
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from line import send_line_message
+from line import LineBot
 
 
 today_tw = datetime.now(ZoneInfo("Asia/Taipei")).strftime("%Y/%m/%d")
@@ -9,6 +9,7 @@ today_tw = datetime.now(ZoneInfo("Asia/Taipei")).strftime("%Y/%m/%d")
 
 def main():
     crawler = PTTCrawler("Lifeismoney")
+    bot = LineBot()
     articles = crawler.crawl_board()
 
     if not articles:
@@ -21,7 +22,7 @@ def main():
     # LINE message limit is 5000 chars
     if len(message) > 5000:
         message = message[:4997] + "..."
-    send_line_message(message)
+    bot.send_message(message)
 
 
 if __name__ == "__main__":

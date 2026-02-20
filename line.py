@@ -11,16 +11,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def send_line_message(text):
-    token = os.getenv("CHANNEL_ACCESS_TOKEN")
-    user_id = os.getenv("USER_ID")
+class LineBot:
+    def __init__(self):
+        self.token = os.getenv("CHANNEL_ACCESS_TOKEN")
+        self.user_id = os.getenv("USER_ID")
+        self.configuration = Configuration(access_token=self.token)
 
-    configuration = Configuration(access_token=token)
-    with ApiClient(configuration) as api_client:
-        api = MessagingApi(api_client)
-        api.push_message(
-            PushMessageRequest(
-                to=user_id,
-                messages=[TextMessage(text=text)],
+    def send_message(self, text):
+        with ApiClient(self.configuration) as api_client:
+            api = MessagingApi(api_client)
+            api.push_message(
+                PushMessageRequest(
+                    to=self.user_id,
+                    messages=[TextMessage(text=text)],
+                )
             )
-        )
