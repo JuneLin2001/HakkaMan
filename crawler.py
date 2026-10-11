@@ -24,6 +24,8 @@ class PTTCrawler:
     def crawl_board(self) -> List[Dict]:
         """Fetch and parse the Atom feed for the board"""
         response = httpx.get(self.feed_url, timeout=20.0)
+        if response.is_error:
+            print(f"Worker returned {response.status_code}: {response.text[:500]}")
         response.raise_for_status()
 
         root = ET.fromstring(response.text)
